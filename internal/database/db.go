@@ -3,6 +3,7 @@ package database
 import (
 	"log"
 
+	"github.com/Vostok1611/tasks-service/internal/task"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
@@ -17,6 +18,10 @@ func InitDB() (*gorm.DB, error) {
 	db, err = gorm.Open(postgres.Open(dsn), &gorm.Config{})
 	if err != nil {
 		log.Fatalf("Could not connect to database: %v", err)
+	}
+	//  Автоматически создаём таблицу tasks (если её нет)
+	if err := db.AutoMigrate(&task.Task{}); err != nil {
+		return nil, err
 	}
 
 	log.Println("Database connection established")
