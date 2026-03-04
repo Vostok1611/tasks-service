@@ -42,13 +42,13 @@ func (h *Handler) CreateTask(ctx context.Context, req *taskpb.CreateTaskRequest)
 		},
 	}, nil
 }
-func (h *Handler) GetTask(ctx context.Context, req *taskpb.GetTaskRequest) (*taskpb.GetTaskResponse, error) {
+func (h *Handler) GetTaskById(ctx context.Context, req *taskpb.GetTaskByIdRequest) (*taskpb.GetTaskByIdResponse, error) {
 	// 1. Получаем задачу из БД по ID
 	t, err := h.svc.GetTaskByID(req.Id)
 	if err != nil {
 		return nil, err
 	}
-	return &taskpb.GetTaskResponse{
+	return &taskpb.GetTaskByIdResponse{
 		Task: &taskpb.Task{
 			Id:     t.ID,
 			Title:  t.Task,
@@ -58,23 +58,12 @@ func (h *Handler) GetTask(ctx context.Context, req *taskpb.GetTaskRequest) (*tas
 	}, nil
 }
 
-func (h *Handler) ListTasks(ctx context.Context, req *taskpb.ListTasksRequest) (*taskpb.ListTasksResponse, error) {
-	var tasks []task.Task
-	var err error
-	// 1. Проверяем, хочет ли клиент фильтрацию по пользователю
-	if req.UserId != nil && *req.UserId != "" {
-		//Есть фильтр — берём задачи только этого пользователя
-		tasks, err = h.svc.GetTasksByUserID(*req.UserId)
-	} else {
-		// Нет фильтра — берём все задачи
-		tasks, err = h.svc.GetAllTasks()
-	}
-
+func (h *Handler) GetAllTasks(ctx context.Context, req *taskpb.GetAllTasksRequest) (*taskpb.GetAllTasksResponse, error) {
+	tasks, err := h.svc.GetAllTasks()
 	if err != nil {
 		return nil, err
 	}
 
-	// 2. Преобразование (одинаково для обоих случаев)
 	pbTasks := make([]*taskpb.Task, 0, len(tasks))
 	for _, t := range tasks {
 		pbTasks = append(pbTasks, &taskpb.Task{
@@ -84,7 +73,30 @@ func (h *Handler) ListTasks(ctx context.Context, req *taskpb.ListTasksRequest) (
 			UserId: t.UserID,
 		})
 	}
-	return &taskpb.ListTasksResponse{Tasks: pbTasks}, nil
+	return &taskpb.GetAllTasksResponse{Tasks: pbTasks}, nil
+}
+
+func (h *Handler) GetTasksByUser(ctx context.Context, req *taskpb.GetTasksByUserRequest) (*taskpb.GetTasksByUserResponse, error) {
+	if req.UserId == "" {
+		return nil, fmt.Errorf("user_id cannot be empty")
+	}
+
+	tasks, err := h.svc.GetTasksByUserID(req.UserId)
+	if err != nil {
+		return nil, err
+	}
+
+	pbTasks := make([]*taskpb.Task, 0, len(tasks))
+	for _, t := range tasks {
+		pbTasks = append(pbTasks, &taskpb.Task{
+			Id:     t.ID,
+			Title:  t.Task,
+			IsDone: t.IsDone,
+			UserId: t.UserID,
+		})
+	}
+
+	return &taskpb.GetTasksByUserResponse{Tasks: pbTasks}, nil
 }
 
 func (h *Handler) UpdateTask(ctx context.Context, req *taskpb.UpdateTaskRequest) (*taskpb.UpdateTaskResponse, error) {
